@@ -32,13 +32,13 @@ func writeConfig(content []byte) {
 	errCheck(err)
 }
 
-func getConfigFromASM(secretName string) {
+func getConfigFromASM(secretId string) {
 	sess := session.Must(session.NewSession())
 	svc := secretsmanager.New(sess)
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &secretName})
+	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &secretId})
 
 	errCheck(err)
-	writeConfig(result.SecretBinary)
+	writeConfig([]byte(result.String()))
 }
 
 func getConfigFromS3(bucketName string, bucketKey string) {
@@ -59,16 +59,16 @@ func Load() {
 		return
 	}
 
-	secretConfigName := os.Getenv("FB_SECRET_CONFIG_NAME")
-	s3ConfigBucketName := os.Getenv("FB_S3_CONFIG_BUCKET_NAME")
-	s3ConfigBucketKey := os.Getenv("FB_S3_CONFIG_BUCKET_KEY")
+	secretConfigId := os.Getenv("FB_CONFIG_SECRET_ID")
+	s3ConfigBucketName := os.Getenv("FB_CONFIG_S3_BUCKET_NAME")
+	s3ConfigBucketKey := os.Getenv("FB_CONFIG_S3_BUCKET_KEY")
 
-	if len(secretConfigName) > 0 && len(s3ConfigBucketName) > 0 {
+	if len(secretConfigId) > 0 && len(s3ConfigBucketName) > 0 {
 		panic(fmt.Errorf("can only load config from S3 or ASM. Not both"))
 	}
 
-	if len(secretConfigName) > 0 {
-		getConfigFromASM(secretConfigName)
+	if len(secretConfigId) > 0 {
+		getConfigFromASM(secretConfigId)
 		return
 	}
 
