@@ -28,11 +28,14 @@ func fileExists(fileName string) bool {
 }
 
 func writeConfig(content []byte) {
+	fmt.Println("Writing FunctionBeat configuration to disk")
 	err := os.WriteFile(fileName, content, 0444)
 	errCheck(err)
+	fmt.Println("FunctionBeat configuration saved to disk")
 }
 
 func getConfigFromASM(secretId string) {
+	fmt.Println("Fetching FunctionBeat configuration from ASM")
 	sess := session.Must(session.NewSession())
 	svc := secretsmanager.New(sess)
 	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &secretId})
@@ -42,6 +45,7 @@ func getConfigFromASM(secretId string) {
 }
 
 func getConfigFromS3(bucketName string, bucketKey string) {
+	fmt.Println("Fetching FunctionBeat configuration from S3")
 	sess := session.Must(session.NewSession())
 	buffer := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(sess)
