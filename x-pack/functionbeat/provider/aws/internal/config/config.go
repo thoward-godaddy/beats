@@ -38,7 +38,7 @@ func getConfigFromASM(secretId string) {
 	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &secretId})
 
 	errCheck(err)
-	writeConfig([]byte(result.String()))
+	writeConfig([]byte(*result.SecretString))
 }
 
 func getConfigFromS3(bucketName string, bucketKey string) {
