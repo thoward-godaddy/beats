@@ -53,3 +53,4 @@ x-pack/elastic-agent/pkg/agent/operation/tests/scripts/serviceable-1.0-darwin-x8
 
 # Files generated with the bump version automations
 *.bck
+/x-pack/functionbeat/provider/aws/env-vars

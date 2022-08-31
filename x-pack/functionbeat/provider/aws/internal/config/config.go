@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -42,6 +43,32 @@ func getConfigFromASM(secretId string) {
 
 	errCheck(err)
 	writeConfig([]byte(*result.SecretString))
+	setAuthEnvVars()
+}
+
+// TODO: Make this Generic
+func setAuthEnvVars() {
+	type EsspDeploymentCredentials struct {
+		CloudId       string `json:"deployment_id"`
+		CloudAuthUser string `json:"ingestion_user"`
+		CloudAuthPass string `json:"ingestion_user_password"`
+	}
+
+	var esspDeploymentCredentials EsspDeploymentCredentials
+
+	fmt.Println("Fetching FunctionBeat auth environment variables")
+	secretId := "essp_deployment_credentials"
+	sess := session.Must(session.NewSession())
+	svc := secretsmanager.New(sess)
+	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{SecretId: &secretId})
+	errCheck(err)
+
+	err = json.Unmarshal([]byte(*result.SecretString), &esspDeploymentCredentials)
+	errCheck(err)
+
+	_ = os.Setenv("CLOUD_ID", esspDeploymentCredentials.CloudId)
+	_ = os.Setenv("CLOUD_AUTH_USER", esspDeploymentCredentials.CloudAuthUser)
+	_ = os.Setenv("CLOUD_AUTH_PASS", esspDeploymentCredentials.CloudAuthPass)
 }
 
 func getConfigFromS3(bucketName string, bucketKey string) {
@@ -56,6 +83,7 @@ func getConfigFromS3(bucketName string, bucketKey string) {
 
 	errCheck(err)
 	writeConfig(buffer.Bytes())
+	setAuthEnvVars()
 }
 
 func Load() {
