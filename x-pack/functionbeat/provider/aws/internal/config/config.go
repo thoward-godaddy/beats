@@ -11,7 +11,8 @@ import (
 	"os"
 )
 
-const fileName = "functionbeat.yml"
+const configFile = "functionbeat.yml"
+const credFile = "/tmp/credentials"
 
 func errCheck(err error) {
 	if err != nil {
@@ -30,7 +31,7 @@ func fileExists(fileName string) bool {
 
 func writeConfig(content []byte) {
 	fmt.Println("Writing FunctionBeat configuration to disk")
-	err := os.WriteFile("/tmp/"+fileName, content, 0444)
+	err := os.WriteFile("/tmp/"+configFile, content, 0444)
 	errCheck(err)
 	fmt.Println("FunctionBeat configuration saved to disk")
 }
@@ -46,17 +47,29 @@ func getConfigFromASM(secretId string) {
 	setAuthEnvVars()
 }
 
-// TODO: Make this Generic
-func setAuthEnvVars() {
-	type EsspDeploymentCredentials struct {
-		CloudId       string `json:"deployment_id"`
-		CloudAuthUser string `json:"ingestion_user"`
-		CloudAuthPass string `json:"ingestion_user_password"`
-	}
+type EsspDeploymentCredentials struct {
+	CloudId       string `json:"deployment_id"`
+	CloudAuthUser string `json:"ingestion_user"`
+	CloudAuthPass string `json:"ingestion_user_password"`
+}
 
+func getAuthFromCache() EsspDeploymentCredentials {
+	fmt.Println("Fetching FunctionBeat Auth from Cache")
 	var esspDeploymentCredentials EsspDeploymentCredentials
 
-	fmt.Println("Fetching FunctionBeat auth environment variables")
+	secretString, err := os.ReadFile(credFile)
+	errCheck(err)
+
+	err = json.Unmarshal(secretString, &esspDeploymentCredentials)
+	errCheck(err)
+
+	return esspDeploymentCredentials
+}
+
+func getAuthFromAsm() EsspDeploymentCredentials {
+	fmt.Println("Fetching FunctionBeat Auth from SecretsManager")
+	var esspDeploymentCredentials EsspDeploymentCredentials
+
 	secretId := "essp_deployment_credentials"
 	sess := session.Must(session.NewSession())
 	svc := secretsmanager.New(sess)
@@ -65,6 +78,24 @@ func setAuthEnvVars() {
 
 	err = json.Unmarshal([]byte(*result.SecretString), &esspDeploymentCredentials)
 	errCheck(err)
+
+	err = os.WriteFile(credFile, []byte(*result.SecretString), 0444)
+	errCheck(err)
+
+	return esspDeploymentCredentials
+}
+
+// TODO: Make this Generic
+func setAuthEnvVars() {
+	fmt.Println("Fetching FunctionBeat Auth")
+
+	var esspDeploymentCredentials EsspDeploymentCredentials
+
+	if fileExists(credFile) {
+		esspDeploymentCredentials = getAuthFromCache()
+	} else {
+		esspDeploymentCredentials = getAuthFromAsm()
+	}
 
 	_ = os.Setenv("CLOUD_ID", esspDeploymentCredentials.CloudId)
 	_ = os.Setenv("CLOUD_AUTH_USER", esspDeploymentCredentials.CloudAuthUser)
@@ -87,11 +118,12 @@ func getConfigFromS3(bucketName string, bucketKey string) {
 }
 
 func Load() bool {
-	if fileExists(fileName) {
+	if fileExists(configFile) {
 		return false
 	}
 
-	if fileExists("/tmp/" + fileName) {
+	if fileExists("/tmp/" + configFile) {
+		setAuthEnvVars()
 		return true
 	}
 
