@@ -30,7 +30,7 @@ func fileExists(fileName string) bool {
 
 func writeConfig(content []byte) {
 	fmt.Println("Writing FunctionBeat configuration to disk")
-	err := os.WriteFile(fileName, content, 0444)
+	err := os.WriteFile("/tmp/"+fileName, content, 0444)
 	errCheck(err)
 	fmt.Println("FunctionBeat configuration saved to disk")
 }
@@ -86,9 +86,13 @@ func getConfigFromS3(bucketName string, bucketKey string) {
 	setAuthEnvVars()
 }
 
-func Load() {
+func Load() bool {
 	if fileExists(fileName) {
-		return
+		return false
+	}
+
+	if fileExists("/tmp/" + fileName) {
+		return true
 	}
 
 	secretConfigId := os.Getenv("FB_CONFIG_SECRET_ID")
@@ -101,7 +105,7 @@ func Load() {
 
 	if len(secretConfigId) > 0 {
 		getConfigFromASM(secretConfigId)
-		return
+		return true
 	}
 
 	if len(s3ConfigBucketName) > 0 {
@@ -110,7 +114,7 @@ func Load() {
 		}
 
 		getConfigFromS3(s3ConfigBucketName, s3ConfigBucketKey)
-		return
+		return true
 	}
 
 	panic(fmt.Errorf("failed to find or load functiobeat configuration"))

@@ -18,10 +18,12 @@ var Name = "functionbeat"
 var RootCmd *funcmd.FunctionCmd
 
 func init() {
-	config.Load()
-
 	RootCmd = funcmd.NewFunctionCmd(Name, beater.New)
 	RootCmd.PersistentFlags().AddGoFlag(flag.CommandLine.Lookup("d"))
 	RootCmd.PersistentFlags().AddGoFlag(flag.CommandLine.Lookup("v"))
 	RootCmd.PersistentFlags().AddGoFlag(flag.CommandLine.Lookup("e"))
+
+	if config.Load() {
+		_ = flag.CommandLine.Lookup("c").Value.Set("/tmp/functionbeat.yml")
+	}
 }
